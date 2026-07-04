@@ -7,8 +7,12 @@ import { SPECIES, compressImage } from "../../lib/constants";
 
 function UploadInner() {
   const router = useRouter();
-  const params = useSearchParams();
-  const editId = params.get("edit");
+  const [editId, setEditId] = useState(null);
+
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  setEditId(urlParams.get("edit"));
+}, []);
 
   const [photoPreview, setPhotoPreview] = useState("");
   const [photoBlob, setPhotoBlob] = useState(null);
