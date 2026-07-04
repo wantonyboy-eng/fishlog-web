@@ -1,29 +1,14 @@
-import './globals.css';
+import { Suspense } from 'react';
+import UploadInner from './UploadInner';
 
 export const metadata = {
-  title: 'Fih',
-  description: 'Log every catch. Build your lifelong fishing profile.',
+  title: 'Fih | Log a catch',
 };
 
-export const viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-};
-
-export default function RootLayout({ children }) {
+export default function UploadPage() {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body>
-        <div id="app">{children}</div>
-      </body>
-    </html>
+    <Suspense fallback={<div className="loading">Loading…</div>}>
+      <UploadInner />
+    </Suspense>
   );
 }
