@@ -1,18 +1,19 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { SPECIES, compressImage } from "../../lib/constants";
 
 function UploadInner() {
   const router = useRouter();
+
   const [editId, setEditId] = useState(null);
 
-useEffect(() => {
-  const urlParams = new URLSearchParams(window.location.search);
-  setEditId(urlParams.get("edit"));
-}, []);
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    setEditId(urlParams.get("edit"));
+  }, []);
 
   const [photoPreview, setPhotoPreview] = useState("");
   const [photoBlob, setPhotoBlob] = useState(null);
