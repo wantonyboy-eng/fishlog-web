@@ -35,7 +35,7 @@ export default function UploadInner() {
       .from('catches')
       .select('*')
       .eq('id', editId)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         if (!data) return;
 
@@ -64,91 +64,42 @@ export default function UploadInner() {
   async function handleSubmit() {
     try {
       setErr('');
+
+      if (!photoBlob && !existingPhotoUrl) { setErr('Add a photo of your catch.'); return; }
+      if (!species) { setErr('Select a species.'); return; }
+      if (!rating) { setErr('Rate how memorable it was.'); return; }
+      if (!dateCaught) { setErr('Add the date you caught it.'); return; }
+
       setLoading(true);
 
-      if (!photoBlob && !existingPhotoUrl) {
-        setErr('Add a photo of your catch.');
-        return;
-      }
-      if (!species) {
-        setErr('Select a species.');
-        return;
-      }
-      if (!rating) {
-        setErr('Rate how memorable it was.');
-        return;
-      }
-      if (!dateCaught) {
-        setErr('Add the date you caught it.');
-        return;
-      }
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setErr('Not logged in.');
-        return;
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setErr('Not logged in.'); return; }
 
       let photoUrl = existingPhotoUrl;
 
       if (photoBlob) {
         const path = `catches/${user.id}-${Date.now()}.jpg`;
-
         const { error: uploadError } = await supabase.storage
           .from('photos')
           .upload(path, photoBlob, { contentType: 'image/jpeg' });
 
-        if (uploadError) {
-          setErr(uploadError.message);
-          return;
-        }
+        if (uploadError) { setErr(uploadError.message); return; }
 
-        photoUrl = supabase.storage
-          .from('photos')
-          .getPublicUrl(path).data.publicUrl;
+        photoUrl = supabase.storage.from('photos').getPublicUrl(path).data.publicUrl;
       }
 
       const payload = {
-        owner_id: user.id,
-        species,
-        caption,
-        rating,
-        weight: weight || null,
-        length: length || null,
-        location,
-        date_caught: dateCaught,
-        released,
-        is_public: isPublic,
-        photo_url: photoUrl,
+        species, caption, rating, weight: weight || null, length: length || null,
+        location, date_caught: dateCaught, released, is_public: isPublic, photo_url: photoUrl,
       };
 
       if (editId) {
-        const { error } = await supabase
-          .from('catches')
-          .update(payload)
-          .eq('id', editId);
-
-        if (error) {
-          setErr(error.message);
-          return;
-        }
-
+        const { error } = await supabase.from('catches').update(payload).eq('id', editId);
+        if (error) { setErr(error.message); return; }
         router.push(`/catch/${editId}`);
       } else {
-        const { data, error } = await supabase
-          .from('catches')
-          .insert(payload)
-          .select()
-          .single();
-
-        if (error) {
-          setErr(error.message);
-          return;
-        }
-
+        const { data, error } = await supabase.from('catches').insert({ ...payload, owner_id: user.id }).select().single();
+        if (error) { setErr(error.message); return; }
         router.push(`/catch/${data.id}`);
       }
     } finally {
@@ -161,10 +112,8 @@ export default function UploadInner() {
   return (
     <div>
       <div className="back-row">
-        <button className="back-btn" onClick={() => router.back()}>
-          ←
-        </button>
-        <h3>Fih</h3>
+        <button className="back-btn" onClick={() => router.back()}>←</button>
+        <h3>{editId ? 'Edit catch' : 'Log a catch'}</h3>
       </div>
 
       <div className="content-pad">
@@ -174,99 +123,69 @@ export default function UploadInner() {
           ) : (
             <>
               <div>📸</div>
-              <div>Upload your catch</div>
+              <div>Tap to add a photo</div>
             </>
           )}
-
-          <input
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={handlePhotoPick}
-          />
+          <input type="file" accept="image/*" hidden onChange={handlePhotoPick} />
         </label>
 
         <div className="field">
           <label>Species</label>
           <select value={species} onChange={(e) => setSpecies(e.target.value)}>
             <option value="">Select species</option>
-            {SPECIES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
+            {SPECIES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
+          <div className="hint">Don't see it? Choose "Other" and name it in the caption.</div>
         </div>
 
         <div className="field">
-          <label>Rating</label>
+          <label>How memorable was this catch?</label>
           <div className="star-input">
             {[1, 2, 3, 4, 5].map((n) => (
-              <span
-                key={n}
-                className={n <= rating ? 'on' : ''}
-                onClick={() => setRating(n)}
-              >
-                ★
-              </span>
+              <span key={n} className={n <= rating ? 'on' : ''} onClick={() => setRating(n)}>★</span>
             ))}
           </div>
         </div>
 
         <div className="field">
           <label>Caption</label>
-          <textarea
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-          />
+          <textarea value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Finally caught one on a chatterbait." />
         </div>
 
         <div className="two-col">
           <div className="field">
-            <label>Weight</label>
-            <input
-              type="number"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-            />
+            <label>Weight (lb)</label>
+            <input type="number" step="0.1" value={weight} onChange={(e) => setWeight(e.target.value)} />
           </div>
-
           <div className="field">
-            <label>Length</label>
-            <input
-              type="number"
-              value={length}
-              onChange={(e) => setLength(e.target.value)}
-            />
+            <label>Length (in)</label>
+            <input type="number" step="0.1" value={length} onChange={(e) => setLength(e.target.value)} />
           </div>
         </div>
 
         <div className="field">
-          <label>Date</label>
-          <input
-            type="date"
-            value={dateCaught}
-            onChange={(e) => setDateCaught(e.target.value)}
-          />
+          <label>Date caught</label>
+          <input type="date" value={dateCaught} onChange={(e) => setDateCaught(e.target.value)} />
         </div>
 
         <div className="field">
-          <label>Location</label>
-          <input
-            type="text"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          />
+          <label>Location name</label>
+          <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Lake Fork, TX" />
         </div>
 
-        <div className="err">{err}</div>
+        <div className="toggle-row">
+          <div>Catch &amp; release</div>
+          <div className={`switch ${released ? 'on' : ''}`} onClick={() => setReleased(!released)}><div className="knob" /></div>
+        </div>
+        <div className="toggle-row">
+          <div>Public</div>
+          <div className={`switch ${isPublic ? 'on' : ''}`} onClick={() => setIsPublic(!isPublic)}><div className="knob" /></div>
+        </div>
 
-        <button
-          className="btn btn-primary"
-          onClick={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? 'Posting...' : editId ? 'Save' : 'Post Catch'}
+        {err && <div className="err" style={{ marginTop: 14 }}>{err}</div>}
+        <div style={{ height: 8 }} />
+        <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
+          {loading ? 'Posting...' : editId ? 'Save changes' : 'Post catch'}
         </button>
       </div>
     </div>

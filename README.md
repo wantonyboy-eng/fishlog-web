@@ -1,4 +1,4 @@
-# FishLog — mobile web MVP
+# Fih — mobile web MVP
 
 Next.js + Supabase. See the walkthrough in your Claude conversation for full setup steps. Quick version:
 
