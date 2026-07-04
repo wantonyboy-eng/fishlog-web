@@ -25,7 +25,7 @@ export default function Login() {
   return (
     <div>
       <div className="hero">
-        <div className="brand">🎣 Fish<span style={{ color: 'var(--accent)' }}>Log</span></div>
+        <div className="brand">Fih</div>
         <div className="tag">Sign in to your fishing journal.</div>
       </div>
       <div className="content-pad">

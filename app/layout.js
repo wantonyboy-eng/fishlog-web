@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'FishLog',
+  title: 'Fih',
   description: 'Log every catch. Build your lifelong fishing profile.',
 };
 

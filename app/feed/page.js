@@ -73,7 +73,7 @@ export default function Feed() {
 
   return (
     <div>
-      <div className="topbar"><h1>🎣 FishLog</h1></div>
+      <div className="topbar"><h1>Fih</h1></div>
       <div className="tabs">
         <button className={`tab ${tab === 'everyone' ? 'active' : ''}`} onClick={() => setTab('everyone')}>Everyone</button>
         <button className={`tab ${tab === 'following' ? 'active' : ''}`} onClick={() => setTab('following')}>Following</button>
