@@ -22,17 +22,19 @@ export default function Signup() {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) { setErr(error.message); return; }
     if (!data.session) {
-      // Email confirmation is turned on in your Supabase project.
+      // Email confirmation is turned on in your Supabase project. A profile
+      // is already created behind the scenes; the user just needs to confirm
+      // and then sign in, at which point they'll land in onboarding automatically.
       setErr('Check your email to confirm your account, then come back and sign in.');
       return;
     }
 
-    const { error: profileErr } = await supabase.from('profiles').insert({
-      id: data.user.id,
-      username: clean,
-      display_name: clean,
-    });
-    if (profileErr) { setErr(profileErr.message); return; }
+    // A stub profile row already exists (created by a database trigger the
+    // instant the account was created) — claim the chosen username on it.
+    const { error: profileErr } = await supabase.from('profiles')
+      .update({ username: clean, display_name: clean })
+      .eq('id', data.user.id);
+    if (profileErr) { setErr('That username was just taken — try another.'); return; }
 
     router.push('/onboarding');
   }

@@ -11,9 +11,15 @@ export default function Login() {
 
   async function handleLogin() {
     setErr('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setErr(error.message); return; }
-    router.push('/feed');
+
+    const { data: profile, error: profileErr } = await supabase.from('profiles').select('onboarded').eq('id', data.user.id).maybeSingle();
+    if (profileErr || !profile) {
+      setErr("We couldn't find your profile. Try signing up again, or contact support.");
+      return;
+    }
+    router.push(profile.onboarded ? '/feed' : '/onboarding');
   }
 
   return (

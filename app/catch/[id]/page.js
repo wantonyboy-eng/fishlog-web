@@ -11,6 +11,7 @@ export default function CatchDetail() {
   const { id } = useParams();
 
   const [c, setC] = useState(null);
+  const [loadErr, setLoadErr] = useState('');
   const [likes, setLikes] = useState([]);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
@@ -22,11 +23,15 @@ export default function CatchDetail() {
   }, [session, id]);
 
   async function load() {
-    const { data } = await supabase.from('catches').select('*, profiles(username, display_name, avatar_url)').eq('id', id).single();
+    const { data, error } = await supabase.from('catches').select('*, profiles!catches_owner_id_fkey(username, display_name, avatar_url)').eq('id', id).maybeSingle();
+    if (error) { console.error('catch load error:', error); setLoadErr(error.message); return; }
+    if (!data) { setLoadErr('This catch could not be found.'); return; }
     setC(data);
-    const { data: likeRows } = await supabase.from('likes').select('user_id').eq('catch_id', id);
+    const { data: likeRows, error: likeErr } = await supabase.from('likes').select('user_id').eq('catch_id', id);
+    if (likeErr) console.error('likes load error:', likeErr);
     setLikes((likeRows || []).map(l => l.user_id));
-    const { data: commentRows } = await supabase.from('comments').select('*, profiles(username, display_name)').eq('catch_id', id).order('created_at', { ascending: true });
+    const { data: commentRows, error: commentErr } = await supabase.from('comments').select('*, profiles!comments_user_id_fkey(username, display_name)').eq('catch_id', id).order('created_at', { ascending: true });
+    if (commentErr) console.error('comments load error:', commentErr);
     setComments(commentRows || []);
   }
 
@@ -60,6 +65,17 @@ export default function CatchDetail() {
     router.push(`/profile/${session.user.id === c.owner_id ? c.profiles.username : ''}`);
   }
 
+  if (loadErr) {
+    return (
+      <div>
+        <div className="back-row"><button className="back-btn" onClick={() => router.push('/feed')}>←</button><h3>Catch</h3></div>
+        <div className="empty">
+          <h3>Couldn't load this catch</h3>
+          <div style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 8, color: 'var(--danger)' }}>{loadErr}</div>
+        </div>
+      </div>
+    );
+  }
   if (!c) return <div className="loading">Loading…</div>;
   const isOwner = session && c.owner_id === session.user.id;
   const liked = session && likes.includes(session.user.id);

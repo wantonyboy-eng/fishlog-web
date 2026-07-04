@@ -11,6 +11,7 @@ export default function Profile() {
   const { username } = useParams();
 
   const [profile, setProfile] = useState(null);
+  const [loadErr, setLoadErr] = useState('');
   const [myProfile, setMyProfile] = useState(null);
   const [catches, setCatches] = useState([]);
   const [followerCount, setFollowerCount] = useState(0);
@@ -25,14 +26,16 @@ export default function Profile() {
   }, [session, username]);
 
   async function load() {
-    const { data: p } = await supabase.from('profiles').select('*').eq('username', username).single();
+    const { data: p, error: pErr } = await supabase.from('profiles').select('*').eq('username', username).maybeSingle();
+    if (pErr) { console.error('profile load error:', pErr); setLoadErr(pErr.message); return; }
     if (!p) { setProfile(false); return; }
     setProfile(p);
 
-    const { data: mp } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+    const { data: mp } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
     setMyProfile(mp);
 
-    const { data: theirCatches } = await supabase.from('catches').select('*').eq('owner_id', p.id).order('created_at', { ascending: false });
+    const { data: theirCatches, error: cErr } = await supabase.from('catches').select('*').eq('owner_id', p.id).order('created_at', { ascending: false });
+    if (cErr) console.error('catches load error:', cErr);
     setCatches(theirCatches || []);
 
     const total = (theirCatches || []).length;
@@ -65,6 +68,7 @@ export default function Profile() {
     load();
   }
 
+  if (loadErr) return <div className="empty"><h3>Couldn't load this profile</h3><div style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 8, color: 'var(--danger)' }}>{loadErr}</div></div>;
   if (profile === false) return <div className="empty"><h3>User not found</h3></div>;
   if (!profile || !myProfile) return <div className="loading">Loading…</div>;
   const isMe = profile.id === session.user.id;

@@ -11,6 +11,7 @@ export default function Feed() {
   const router = useRouter();
   const [tab, setTab] = useState('everyone');
   const [myProfile, setMyProfile] = useState(null);
+  const [loadError, setLoadError] = useState(false);
   const [catches, setCatches] = useState(null);
   const [likesByCatch, setLikesByCatch] = useState({});
   const [commentCounts, setCommentCounts] = useState({});
@@ -22,18 +23,22 @@ export default function Feed() {
   }, [session, tab]);
 
   async function load() {
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+    const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+    if (error || !profile) {
+      setLoadError(true);
+      return;
+    }
     setMyProfile(profile);
 
     let rows = [];
     if (tab === 'everyone') {
-      const { data } = await supabase.from('catches').select('*, profiles(username, display_name, avatar_url)').eq('is_public', true).order('created_at', { ascending: false }).limit(50);
+      const { data } = await supabase.from('catches').select('*, profiles!catches_owner_id_fkey(username, display_name, avatar_url)').eq('is_public', true).order('created_at', { ascending: false }).limit(50);
       rows = data || [];
     } else {
       const { data: follows } = await supabase.from('follows').select('following_id').eq('follower_id', session.user.id);
       const ids = (follows || []).map(f => f.following_id);
       if (ids.length) {
-        const { data } = await supabase.from('catches').select('*, profiles(username, display_name, avatar_url)').eq('is_public', true).in('owner_id', ids).order('created_at', { ascending: false }).limit(50);
+        const { data } = await supabase.from('catches').select('*, profiles!catches_owner_id_fkey(username, display_name, avatar_url)').eq('is_public', true).in('owner_id', ids).order('created_at', { ascending: false }).limit(50);
         rows = data || [];
       }
     }
@@ -52,6 +57,16 @@ export default function Feed() {
     }
   }
 
+  if (loadError) {
+    return (
+      <div className="empty">
+        <h3>Couldn't load your profile</h3>
+        <div>This usually means your account is missing a profile row. Try finishing setup again.</div>
+        <div style={{ height: 16 }} />
+        <button className="btn btn-primary" onClick={() => router.push('/onboarding')}>Go to setup</button>
+      </div>
+    );
+  }
   if (session === undefined || catches === null || !myProfile) {
     return <div className="loading">Casting off…</div>;
   }
